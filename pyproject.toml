@@ -1,0 +1,13 @@
+[tool.ruff]
+line-length = 120
+
+[tool.ruff.lint]
+select = [
+    "E",
+    "F",
+    "I"
+]
+
+# Don't automatically remove unused imports.
+# F401 will still be reported, but Ruff won't fix/remove them
+# unless you explicitly run an unsafe/aggressive fix.
