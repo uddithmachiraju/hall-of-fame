@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Request
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
 import src.services.authentication.auth as auth_service
@@ -26,6 +26,15 @@ async def verify_email(
 
 
 @router.post("/login", response_model=UserLoginResponse)
-async def login(payload: UserLoginRequest, db: AsyncIOMotorDatabase = Depends(get_db)):
+async def login(request: Request, payload: UserLoginRequest, db: AsyncIOMotorDatabase = Depends(get_db)):
     """User login endpoint."""
-    pass
+
+    response = await auth_service.login_user(payload, request, db)
+    return response
+
+
+@router.post("/logout", status_code=200)
+async def logout(request: Request, db: AsyncIOMotorDatabase = Depends(get_db)):
+    """User logout endpoint."""
+
+    await auth_service.logout_user(request, db)

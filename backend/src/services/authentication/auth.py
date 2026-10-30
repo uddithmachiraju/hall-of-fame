@@ -1,3 +1,4 @@
+import asyncio
 from datetime import datetime, timedelta, timezone
 
 from bson import ObjectId
@@ -8,6 +9,7 @@ from passlib.context import CryptContext
 
 from src.config.logging import get_logger
 from src.config.settings import settings
+from src.core.auth import create_user_token
 from src.core.email import generate_token, hash_token, send_verification_email
 from src.db_schemas.users import UserLoginRequest, UserLoginResponse, UserRegisterRequest, UserRegisterResponse
 
@@ -20,6 +22,12 @@ def hash_password(password: str) -> str:
     """hash a plain text using bcrypt."""
 
     return pwd_context.hash(password)
+
+
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    """Verify a plain password against a hashed password."""
+
+    return pwd_context.verify(plain_password, hashed_password)
 
 
 async def register_user(payload: UserRegisterRequest, db: AsyncIOMotorDatabase) -> UserRegisterResponse:
@@ -113,4 +121,56 @@ async def verify_email(token: str, db: AsyncIOMotorDatabase):
 
 async def login_user(payload: UserLoginRequest, request: Request, db: AsyncIOMotorDatabase) -> UserLoginResponse:
     """Authenticates a user and returns a JWT."""
-    pass
+
+    client_ip = request.client.host if request.client else "unknown"
+    logger.info("login_attempt", email=payload.email, client_ip=client_ip)
+
+    user = await db.users.find_one({"email": payload.email})
+
+    password_valid = (
+        await asyncio.to_thread(verify_password, payload.password, user["password"])
+        if user
+        else await asyncio.to_thread(verify_password, payload.password, dummy_hash)
+    )
+
+    if not user or not password_valid:
+        logger.warning("login_failed", email=payload.email, client_ip=client_ip)
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid email or password.")
+
+    if not user["is_email_verified"]:
+        logger.warning("login_failed_email_not_verified", email=payload.email, client_ip=client_ip)
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Email not verified.")
+
+    if not user["is_active"]:
+        logger.warning("login_failed_account_inactive", email=payload.email, client_ip=client_ip)
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Account is inactive.")
+
+    token = create_user_token(str(user["_id"]))
+
+    logger.info("login_success", email=payload.email, client_ip=client_ip)
+
+    return UserLoginResponse(
+        access_token=token,
+        token_type="bearer",
+        expire_in_minutes=settings.JWT_ACCESS_TOKEN_EXPIRE_MINUTES,
+        full_name=user["full_name"],
+        username=user["username"],
+    )
+
+
+async def logout_user(request: Request, db: AsyncIOMotorDatabase):
+    """Logs out the user by invalidating their token."""
+
+    # Extract the token from the Authorization header
+    auth_header = request.headers.get("Authorization")
+    if not auth_header or not auth_header.startswith("Bearer "):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing or invalid Authorization header.")
+
+    token = auth_header.split(" ")[1]
+
+    # Here you would implement token invalidation logic, such as storing the token in a blacklist.
+    # For demonstration purposes, we'll just log the logout action.
+
+    logger.info("logout_success", token=token, client_ip=request.client.host if request.client else "unknown")
+
+    return {"message": "Logged out successfully."}

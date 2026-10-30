@@ -31,6 +31,12 @@ class Settings(BaseSettings):
         default=24, description="Expiration time for email verification tokens in hours"
     )
 
+    # Authentication Settings
+    JWT_SECRET_KEY: str = Field(default=..., description="Secret key for JWT token generation")
+    JWT_ALGORITHM: str = Field(default="HS256", description="Algorithm used for JWT token generation")
+    JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = Field(default=60, description="Access token expiration time in minutes")
+    JWT_REFRESH_TOKEN_EXPIRE_DAYS: int = Field(default=7, description="Refresh token expiration time in days")
+
     # Observability Settings
     LOG_LEVEL: str = Field(default="INFO", description="Logging level")
 

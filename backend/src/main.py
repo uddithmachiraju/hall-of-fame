@@ -9,6 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from src.api.auth.router import router as auth_router
 from src.config.logging import get_logger, setup_logging
 from src.config.settings import get_settings
+from src.db.indexes import create_indexes
 from src.db.mongo_db import check_db_health
 
 settings = get_settings()
@@ -27,6 +28,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             "database_connection_failed", database=settings.MONGO_URI, env=settings.ENV, version=settings.APP_VERSION
         )
         raise RuntimeError("Database connection failed. Application startup aborted.")
+
+    await create_indexes()
 
     yield
 
