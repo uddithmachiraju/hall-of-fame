@@ -5,3 +5,6 @@ motor==3.7.1
 pymongo[srv]==4.17.0
 fastapi==0.136.1
 uvicorn==0.46.0
+passlib[bcrypt]==1.7.4
+bcrypt==4.0.1
+types-passlib==1.7.7.20260211

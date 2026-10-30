@@ -20,6 +20,17 @@ class Settings(BaseSettings):
     # Database Settings
     MONGO_URI: str = Field(default=..., description="MongoDB connection URI")
 
+    # Email Verification Settings
+    SMTP_HOST: str = Field(default="smtp.gmail.com", description="SMTP server host")
+    SMTP_PORT: int = Field(default=587, description="SMTP server port")
+    SMTP_USE_TLS: bool = Field(default=True, description="Whether to use TLS for SMTP connection")
+    SMTP_USERNAME: str = Field(default=..., description="SMTP server username")
+    SMTP_PASSWORD: str = Field(default=..., description="SMTP server password")
+    SMTP_FROM_EMAIL: str = Field(default=..., description="Email address used as the sender for outgoing emails")
+    EMAIL_VERIFY_EXPIRE_HOURS: int = Field(
+        default=24, description="Expiration time for email verification tokens in hours"
+    )
+
     # Observability Settings
     LOG_LEVEL: str = Field(default="INFO", description="Logging level")
 

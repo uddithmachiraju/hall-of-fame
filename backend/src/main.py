@@ -6,6 +6,7 @@ import uvicorn
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 
+from src.api.auth.router import router as auth_router
 from src.config.logging import get_logger, setup_logging
 from src.config.settings import get_settings
 from src.db.mongo_db import check_db_health
@@ -36,6 +37,7 @@ app = FastAPI(title=settings.APP_NAME, version=settings.APP_VERSION, lifespan=li
 app.add_middleware(
     CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"]
 )
+app.include_router(auth_router, prefix="/auth", tags=["Authentication"])
 
 
 @app.middleware("http")
