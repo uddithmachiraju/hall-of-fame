@@ -3,7 +3,7 @@ from motor.motor_asyncio import AsyncIOMotorDatabase
 
 import src.services.authentication.auth as auth_service
 from src.db.mongo_db import get_db
-from src.db_schemas.users import UserLoginRequest, UserLoginResponse, UserRegisterRequest, UserRegisterResponse
+from src.schemas.users import UserLoginRequest, UserLoginResponse, UserRegisterRequest, UserRegisterResponse
 
 router = APIRouter()
 

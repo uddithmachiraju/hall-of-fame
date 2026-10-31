@@ -11,7 +11,7 @@ from src.config.logging import get_logger
 from src.config.settings import settings
 from src.core.auth import create_user_token
 from src.core.email import generate_token, hash_token, send_verification_email
-from src.db_schemas.users import UserLoginRequest, UserLoginResponse, UserRegisterRequest, UserRegisterResponse
+from src.schemas.users import UserLoginRequest, UserLoginResponse, UserRegisterRequest, UserRegisterResponse
 
 logger = get_logger(__name__)
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -47,6 +47,7 @@ async def register_user(payload: UserRegisterRequest, db: AsyncIOMotorDatabase) 
         "full_name": payload.full_name,
         "email": payload.email,
         "password": hashed_password,
+        "role": "user",
         "is_active": True,
         "is_email_verified": False,
     }
@@ -145,13 +146,14 @@ async def login_user(payload: UserLoginRequest, request: Request, db: AsyncIOMot
         logger.warning("login_failed_account_inactive", email=payload.email, client_ip=client_ip)
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Account is inactive.")
 
-    token = create_user_token(str(user["_id"]))
+    token = create_user_token(user_id=str(user["_id"]), role=user["role"])
 
     logger.info("login_success", email=payload.email, client_ip=client_ip)
 
     return UserLoginResponse(
         access_token=token,
         token_type="bearer",
+        role=user["role"],
         expire_in_minutes=settings.JWT_ACCESS_TOKEN_EXPIRE_MINUTES,
         full_name=user["full_name"],
         username=user["username"],

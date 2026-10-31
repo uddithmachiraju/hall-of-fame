@@ -13,6 +13,7 @@ class UserLoginResponse(BaseModel):
 
     access_token: str = Field(..., description="JWT access token")
     token_type: str = Field(default="bearer", description="Type of the token")
+    role: str = Field(..., description="Role of the user")
     expire_in_minutes: int = Field(..., description="Token expiration time in minutes")
     full_name: str = Field(..., description="Full name of the user")
     username: str = Field(..., description="Username of the user")

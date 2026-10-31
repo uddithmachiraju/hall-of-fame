@@ -7,6 +7,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 
 from src.api.auth.router import router as auth_router
+from src.api.games.router import router as game_router
 from src.config.logging import get_logger, setup_logging
 from src.config.settings import get_settings
 from src.db.indexes import create_indexes
@@ -41,6 +42,7 @@ app.add_middleware(
     CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"]
 )
 app.include_router(auth_router, prefix="/auth", tags=["Authentication"])
+app.include_router(game_router, prefix="/games", tags=["Games"])
 
 
 @app.middleware("http")
