@@ -38,6 +38,29 @@ def create_user_token(user_id: str, role: str) -> str:
     )
 
 
+def create_refresh_token(user_id: str, role: str) -> tuple[str, str]:
+    """Generate a JWT refresh token for the given user id."""
+
+    jti = str(uuid4())
+    user_sub = str(user_id)
+    now = datetime.now(timezone.utc)
+    issued_at = int(now.timestamp())
+    expires_at = int((now + timedelta(days=settings.JWT_REFRESH_TOKEN_EXPIRE_DAYS)).timestamp())
+
+    return jwt.encode(
+        {
+            "jti": jti,
+            "sub": user_sub,
+            "iat": issued_at,
+            "exp": expires_at,
+            "role": role,
+            "type": "refresh",
+        },
+        settings.JWT_SECRET_KEY,
+        algorithm=settings.JWT_ALGORITHM,
+    ), jti
+
+
 def decode_user_token(token: str) -> Any:
     """Decode a JWT token and return the user_id if valid"""
 

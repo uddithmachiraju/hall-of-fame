@@ -3,7 +3,14 @@ from motor.motor_asyncio import AsyncIOMotorDatabase
 
 import src.services.authentication.auth as auth_service
 from src.db.mongo_db import get_db
-from src.schemas.users import UserLoginRequest, UserLoginResponse, UserRegisterRequest, UserRegisterResponse
+from src.schemas.users import (
+    UserLoginRequest,
+    UserLoginResponse,
+    UserRefreshTokenRequest,
+    UserRefreshTokenResponse,
+    UserRegisterRequest,
+    UserRegisterResponse,
+)
 
 router = APIRouter()
 
@@ -33,8 +40,16 @@ async def login(request: Request, payload: UserLoginRequest, db: AsyncIOMotorDat
     return response
 
 
-@router.post("/logout", status_code=200)
-async def logout(request: Request, db: AsyncIOMotorDatabase = Depends(get_db)):
+@router.post("/refresh-token", response_model=UserRefreshTokenResponse)
+async def refresh_token(data: UserRefreshTokenRequest, db: AsyncIOMotorDatabase = Depends(get_db)):
+    """Refresh JWT token endpoint."""
+
+    response = await auth_service.refresh_token(data, db)
+    return response
+
+
+@router.post("/logout", response_model=dict, status_code=200)
+async def logout(request: UserRefreshTokenRequest, db: AsyncIOMotorDatabase = Depends(get_db)):
     """User logout endpoint."""
 
-    await auth_service.logout_user(request, db)
+    return await auth_service.logout_user(request, db)
