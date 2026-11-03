@@ -10,6 +10,8 @@ from src.api.auth.router import router as auth_router
 from src.api.games.router import router as game_router
 from src.config.logging import get_logger, setup_logging
 from src.config.settings import get_settings
+from src.core.deps_container import container
+from src.core.redis import check_redis_health
 from src.db.indexes import create_indexes
 from src.db.mongo_db import check_db_health
 
@@ -23,6 +25,14 @@ app = FastAPI(title=settings.APP_NAME, version=settings.APP_VERSION)
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     logger.info("app_starting", env=settings.ENV, version=settings.APP_VERSION)
+
+    await container.initialize()
+
+    if not await check_redis_health():
+        logger.error(
+            "redis_connection_failed", redis_url=settings.REDIS_URL, env=settings.ENV, version=settings.APP_VERSION
+        )
+        raise RuntimeError("Redis connection failed. Application startup aborted.")
 
     if not await check_db_health():
         logger.error(

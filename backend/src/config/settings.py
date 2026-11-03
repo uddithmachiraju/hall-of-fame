@@ -40,6 +40,16 @@ class Settings(BaseSettings):
     # Observability Settings
     LOG_LEVEL: str = Field(default="INFO", description="Logging level")
 
+    # Redis Settings
+    REDIS_URL: str = Field(default=..., description="Redis connection URL")
+    REDIS_MAX_CONNECTIONS: int = Field(
+        default=50, description="Maximum number of connections in the Redis connection pool"
+    )
+    REDIS_SOCKET_CONNECT_TIMEOUT: int = Field(default=5, description="Socket connect timeout for Redis in seconds")
+    REDIS_SOCKET_TIMEOUT: int = Field(default=5, description="Socket timeout for Redis in seconds")
+    REDIS_HEALTH_CHECK_INTERVAL: int = Field(default=30, description="Health check interval for Redis in seconds")
+    REDIS_RETRY_ON_TIMEOUT: bool = Field(default=True, description="Whether to retry on timeout for Redis operations")
+
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"
