@@ -49,6 +49,7 @@ class Settings(BaseSettings):
     REDIS_SOCKET_TIMEOUT: int = Field(default=5, description="Socket timeout for Redis in seconds")
     REDIS_HEALTH_CHECK_INTERVAL: int = Field(default=30, description="Health check interval for Redis in seconds")
     REDIS_RETRY_ON_TIMEOUT: bool = Field(default=True, description="Whether to retry on timeout for Redis operations")
+    REDIS_CACHE_TTL: int = Field(default=3600, description="Time-to-live for cached items in Redis in seconds")
 
     class Config:
         env_file = ".env"

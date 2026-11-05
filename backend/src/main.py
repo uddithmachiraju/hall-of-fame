@@ -8,6 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from src.api.auth.router import router as auth_router
 from src.api.games.router import router as game_router
+from src.api.players.router import router as player_router
 from src.config.logging import get_logger, setup_logging
 from src.config.settings import get_settings
 from src.core.deps_container import container
@@ -53,7 +54,7 @@ app.add_middleware(
 )
 app.include_router(auth_router, prefix="/auth", tags=["Authentication"])
 app.include_router(game_router, prefix="/games", tags=["Games"])
-
+app.include_router(player_router, prefix="/players", tags=["Players"])
 
 @app.middleware("http")
 async def add_process_time_header(request: Request, call_next):
