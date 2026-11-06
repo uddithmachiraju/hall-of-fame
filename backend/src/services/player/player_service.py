@@ -1,3 +1,5 @@
+from dataclasses import asdict
+
 from src.schemas.leaderboards import BoardSpecification, BoardStanding
 from src.config.settings import settings
 from src.config.logging import get_logger
@@ -10,6 +12,8 @@ from datetime import datetime, timezone
 from typing import Callable, Awaitable
 from pymongo.errors import PyMongoError
 from src.services.leaderboard.leaderboard_service import build_leaderboard_specs, BUCKET_BITS, SCORE_SHIFT, MAX_SCORE, MAX_BUCKET
+from bson import json_util
+
 
 logger = get_logger(__name__)
 
@@ -20,14 +24,14 @@ async def _cached(redis: Redis, key: str, ttl: int, loader: Callable[[], Awaitab
     try:
         raw = await redis.get(key)
         if raw is not None:
-            return json.loads(raw)
+            return json_util.loads(raw)
     except Exception as e:
         logger.error("redis_error", error=str(e))
 
     # If not found in cache, load the value using the loader function.
     value = await loader()
     try:
-        await redis.set(key, json.dumps(value), ex=ttl if value is not None else 30)
+        await redis.set(key, json_util.dumps(value), ex=ttl if value is not None else 30)
     except Exception as e:
         logger.error("redis_error", error=str(e))
     return value
@@ -66,7 +70,7 @@ async def submit_score(player_id: str, score_request: SubmitScoreRequest, db: As
             lambda: db.games.find_one(
                 {
                     "slug": score_request.game_id,
-                    "active": True
+                    "is_active": True
                 },
             ),
         )
@@ -81,10 +85,10 @@ async def submit_score(player_id: str, score_request: SubmitScoreRequest, db: As
         # Check if the player exists and is active
         player = await _cached(
             redis, f"player:{player_id}", settings.REDIS_CACHE_TTL,
-            lambda: db.players.find_one(
+            lambda: db.users.find_one(
                 {
                     "_id": ObjectId(player_id),
-                    "active": True
+                    "is_active": True
                 },
             ),
         )
@@ -107,10 +111,10 @@ async def submit_score(player_id: str, score_request: SubmitScoreRequest, db: As
     boards = build_leaderboard_specs(game_slug=score_request.game_id, now=now, region_code=region)
 
     # Generate the leaderboard keys to be updated, including the event-specific leaderboard and the general event leaderboard.
-    keys = [f"lb:idem:{score_request.event_id}", "lb.events", *(b.key for b in boards)]
+    keys = [f"lb:idem:{str(score_request.event_id)}", "lb.events", *(b.key for b in boards)]
     args: list = [
         7 * 24 * 3600, score_request.points, player_id, SCORE_SHIFT, MAX_SCORE, MAX_BUCKET,
-        score_request.event_id, score_request.game_id, now.isoformat(), json.dumps([b.key for b in boards]),
+        str(score_request.event_id), score_request.game_id, now.isoformat(), json.dumps([b.key for b in boards]),
     ]
 
     for b in boards:
@@ -118,15 +122,21 @@ async def submit_score(player_id: str, score_request: SubmitScoreRequest, db: As
 
     try:
         script = redis.register_script(
-            open("src/lua_scripts/register_leaderboard_event.lua").read()
+            open("src/lua_scripts/apply_leaderboard_event.lua").read()
         )
 
         reply = await script(keys=keys, args=args)
 
         if int(reply[0]) == 0:
             standings = await _get_player_standings(redis, boards, player_id)
-            logger.info("score_duplicate", player_id=player_id, game_id=score_request.game_id, event_id=score_request.event_id)
-            return {"message": "Duplicate score submission. No changes made.", "standings": standings}
+
+            logger.info("score_duplicate", player_id=player_id, game_id=score_request.game_id, event_id=str(score_request.event_id))
+
+            return SubmitScoreResponse(
+                event_id=score_request.event_id,
+                duplicate=True,
+                standings=standings
+            )
 
     except RedisError as exc:
         logger.error("score_redis_error", game_id=score_request.game_id, player_id=player_id, error=str(exc))
@@ -136,7 +146,7 @@ async def submit_score(player_id: str, score_request: SubmitScoreRequest, db: As
         BoardStanding(b.key, int(reply[1 + 2 * i]), b.scope, int(reply[2 + 2 * i]), b.period_type)
         for i, b in enumerate(boards)
     ]
-    logger.info("score_submitted", player_id=player_id, game_id=score_request.game_id, event_id=score_request.event_id, standings=[s.__dict__ for s in standings])
+    logger.info("score_submitted", player_id=player_id, game_id=score_request.game_id, event_id=score_request.event_id, standings=[asdict(s) for s in standings])
     return SubmitScoreResponse(
         event_id=score_request.event_id,
         duplicate=False,
